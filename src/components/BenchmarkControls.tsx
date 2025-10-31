@@ -24,6 +24,12 @@ export default function BenchmarkControls() {
     return list.join(', ')
   }, [impls])
 
+  const engines = useMemo(() => ({
+    js: { label: 'JS', available: true },
+    rust: { label: 'Rust', available: !!impls?.rust },
+    cpp: { label: 'C++', available: !!impls?.cpp },
+  }), [impls])
+
   async function run() {
     if (!impls) return
     setRunning(true)
@@ -54,73 +60,105 @@ export default function BenchmarkControls() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="space-y-2">
-          <label className="block text-sm font-medium">Benchmark</label>
-          <select
-            className="w-full rounded border border-slate-300 bg-white p-2"
-            value={selected.id}
-            onChange={(e) => {
-              const next = BENCH_CASES.find(c => c.id === e.target.value)! as BenchCase
-              setSelected(next)
-              setParam(next.defaultParam)
-            }}
-          >
-            {BENCH_CASES.map(c => (
-              <option key={c.id} value={c.id}>{c.label}</option>
+    <div className="space-y-5">
+      <div className="grid gap-5 lg:grid-cols-3">
+        {/* Engines Card (moved above) */}
+        <div className="lg:col-span-3 rounded border border-white/10 bg-white/5 p-5 shadow-sm backdrop-blur">
+          <h2 className="mb-3 text-lg font-semibold text-slate-100">Engines</h2>
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(engines).map(([key, e]) => (
+              <span key={key} className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs ${e.available ? 'border-emerald-400/40 bg-emerald-400/10 text-emerald-200' : 'border-white/10 bg-white/5 text-slate-300/80'}`}>
+                <span className={`h-2 w-2 rounded-full ${e.available ? 'bg-emerald-400' : 'bg-slate-400'}`} />
+                {e.label}
+                <span className="ml-1 opacity-60">{e.available ? 'ready' : 'n/a'}</span>
+              </span>
             ))}
-          </select>
-          <p className="text-xs text-slate-500">{selected.description}</p>
+          </div>
+          <p className="mt-3 text-xs text-slate-300/70">JS is always available. Rust/C++ require local WASM builds placed under <span className="font-mono text-slate-200">/public/wasm</span>.</p>
         </div>
-        <div className="space-y-2">
-          <label className="block text-sm font-medium">{selected.paramLabel}</label>
-          <input
-            type="range"
-            min={selected.min ?? 1}
-            max={selected.max ?? selected.defaultParam * 2}
-            step={selected.step ?? 1}
-            value={param}
-            onChange={(e) => setParam(Number(e.target.value))}
-            className="w-full"
-          />
-          <div className="text-sm">Current: <span className="font-mono">{param}</span></div>
-        </div>
-      </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <div>
-          <label className="block text-sm font-medium">Warmup</label>
-          <input type="number" className="w-full rounded border border-slate-300 p-2" value={warmup} min={0} onChange={e=>setWarmup(Number(e.target.value))} />
+        {/* Controls Card */}
+        <div className="lg:col-span-3 rounded border border-white/10 bg-white/5 p-5 shadow-sm backdrop-blur">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-100">Benchmark Controls</h2>
+              <p className="text-sm text-slate-300/80">Configure the case, parameter, and rounds, then run.</p>
+            </div>
+            <div className="hidden md:block text-xs text-slate-300/70">Best time across rounds</div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-slate-200">Benchmark</label>
+              <select
+                className="w-full rounded border border-white/10 bg-white/10 p-2 text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/60"
+                value={selected.id}
+                onChange={(e) => {
+                  const next = BENCH_CASES.find(c => c.id === e.target.value)! as BenchCase
+                  setSelected(next)
+                  setParam(next.defaultParam)
+                }}
+              >
+                {BENCH_CASES.map(c => (
+                  <option key={c.id} value={c.id}>{c.label}</option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-300/70">{selected.description}</p>
+            </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-slate-200">{selected.paramLabel}</label>
+              <input
+                type="range"
+                min={selected.min ?? 1}
+                max={selected.max ?? selected.defaultParam * 2}
+                step={selected.step ?? 1}
+                value={param}
+                onChange={(e) => setParam(Number(e.target.value))}
+                className="w-full accent-fuchsia-500"
+              />
+              <div className="text-sm text-slate-300/80">Current: <span className="font-mono text-slate-100">{param}</span></div>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
+            <div>
+              <label className="block text-sm font-medium text-slate-200">Warmup</label>
+              <input type="number" className="w-full rounded border border-white/10 bg-white/10 p-2 text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/60" value={warmup} min={0} onChange={e=>setWarmup(Number(e.target.value))} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-200">Rounds (best time)</label>
+              <input type="number" className="w-full rounded border border-white/10 bg-white/10 p-2 text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/60" value={rounds} min={1} onChange={e=>setRounds(Number(e.target.value))} />
+            </div>
+            <div className="flex items-end gap-3">
+              <button disabled={running} onClick={run} className="inline-flex items-center gap-2 rounded bg-gradient-to-r from-fuchsia-600 to-indigo-600 px-4 py-2 text-white shadow hover:from-fuchsia-500 hover:to-indigo-500 disabled:opacity-50">
+                {running && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/70 border-t-transparent" />}
+                {running ? 'Running…' : 'Run Benchmark'}
+              </button>
+              {!impls && (
+                <span className="inline-flex items-center gap-2 text-sm text-slate-300/80">
+                  <span className="h-3 w-3 animate-spin rounded-full border-2 border-slate-200/70 border-t-transparent" />
+                  Loading engines…
+                </span>
+              )}
+            </div>
+          </div>
         </div>
-        <div>
-          <label className="block text-sm font-medium">Rounds (best time)</label>
-          <input type="number" className="w-full rounded border border-slate-300 p-2" value={rounds} min={1} onChange={e=>setRounds(Number(e.target.value))} />
-        </div>
-        <div className="flex items-end gap-3">
-          <button disabled={running} onClick={run} className="inline-flex items-center gap-2 rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-50">
-            {running && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/60 border-t-transparent" />}
-            {running ? 'Running…' : 'Run'}
-          </button>
-          {!impls && (
-            <span className="inline-flex items-center gap-2 text-sm text-slate-500">
-              <span className="h-3 w-3 animate-spin rounded-full border-2 border-slate-400/70 border-t-transparent" />
-              Loading engines…
-            </span>
-          )}
-        </div>
+
       </div>
 
       <EngineLoader onReady={setImpls} />
 
       {running && (
-        <div className="rounded border border-slate-200 bg-white p-3">
-          <div className="mb-1 flex items-center justify-between text-xs text-slate-600">
-            <span>{progressText || 'Starting…'}</span>
-            <span className="font-mono">{doneSteps}/{totalSteps}</span>
+        <div className="rounded border border-white/10 bg-white/5 p-4 shadow-sm backdrop-blur">
+          <div className="mb-2 flex items-center justify-between text-xs text-slate-300/80">
+            <span className="inline-flex items-center gap-2">
+              <span className="h-3 w-3 animate-spin rounded-full border-2 border-slate-200/70 border-t-transparent" />
+              {progressText || 'Starting…'}
+            </span>
+            <span className="font-mono text-slate-200">{doneSteps}/{totalSteps}</span>
           </div>
-          <div className="h-2 w-full overflow-hidden rounded bg-slate-100">
-            <div className="h-full bg-blue-600" style={{ width: `${progressPct}%` }} />
+          <div className="h-2 w-full overflow-hidden rounded bg-white/10">
+            <div className="h-full bg-gradient-to-r from-fuchsia-500 to-indigo-500 transition-[width] duration-150" style={{ width: `${progressPct}%` }} />
           </div>
         </div>
       )}
@@ -142,11 +180,11 @@ function ResultsCard({ result, unavailable }: { result: BenchResult, unavailable
     return (us < 10 ? us.toFixed(2) : us.toFixed(1)) + ' µs'
   }
   return (
-    <div className="rounded border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="mb-2 text-sm text-slate-500">Param: <span className="font-mono">{result.param}</span>{unavailable && <> • Unavailable: {unavailable}</>}</div>
-      <table className="w-full text-sm">
+    <div className="rounded border border-white/10 bg-white/5 p-4 shadow-sm backdrop-blur">
+      <div className="mb-2 text-sm text-slate-300/80">Param: <span className="font-mono text-slate-200">{result.param}</span>{unavailable && <> • Unavailable: {unavailable}</>}</div>
+      <table className="w-full text-sm text-slate-100">
         <thead>
-          <tr className="text-left text-slate-600">
+          <tr className="text-left text-slate-300/80">
             <th className="py-1">Impl</th>
             <th className="py-1">Best</th>
             <th className="py-1">x faster</th>
@@ -155,11 +193,11 @@ function ResultsCard({ result, unavailable }: { result: BenchResult, unavailable
         </thead>
         <tbody>
           {result.results.map(r => (
-            <tr key={r.impl} className="border-t border-slate-100">
-              <td className="py-1 font-medium uppercase">{r.impl}</td>
-              <td className="py-1 font-mono">{fmtTime(r.timeMs)}</td>
-              <td className="py-1">{isFinite(r.timeMs) && isFinite(fastest) ? (fastest / r.timeMs).toFixed(2) : '-'}</td>
-              <td className="py-1 text-slate-500">{r.error ?? ''}</td>
+            <tr key={r.impl} className="border-t border-white/10">
+              <td className="py-1 font-medium uppercase text-slate-200">{r.impl}</td>
+              <td className="py-1 font-mono text-slate-100">{fmtTime(r.timeMs)}</td>
+              <td className="py-1 text-slate-100">{isFinite(r.timeMs) && isFinite(fastest) ? (fastest / r.timeMs).toFixed(2) : '-'}</td>
+              <td className="py-1 text-slate-300/70">{r.error ?? ''}</td>
             </tr>
           ))}
         </tbody>
