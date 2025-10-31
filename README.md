@@ -1,55 +1,74 @@
-WASM vs JS — 연산 대결 (Vite + React + Tailwind)
+# WASM vs JS Benchmarks
 
-웹에서 JavaScript, WASM(Rust), WASM(C++) 구현을 동일한 파라미터로 실행해 성능을 비교합니다. Vite + React + Tailwind로 UI를 만들고, Rust는 wasm-bindgen (wasm-pack), C++은 Emscripten으로 빌드합니다.
+Compare JavaScript with Rust and C++ WebAssembly across common compute tasks. Built with Vite + React + Tailwind. Rust is compiled via wasm-bindgen (wasm-pack), and C++ via Emscripten.
 
-빠른 시작
-- Node 18+ 권장
-- Rust toolchain + wasm-pack
-- Emscripten (emcc) 활성화
+## Screenshot
 
-명령어
-- npm install
-- npm run wasm:rust  (선택)
-- npm run wasm:cpp   (선택)
-- npm run wasm:all   (선택)
-- npm run dev
+![App Screenshot](public/Screenshot.png)
 
-브라우저에서 각 연산의 파라미터와 라운드를 조절하며 JS/Rust/C++의 실행 시간을 비교할 수 있습니다. 빌드되지 않은 엔진은 "not available"로 표시됩니다.
+## Features
 
-벤치마크 케이스
-- Fibonacci (iterative): fib(n)
-- Prime Sieve: prime_sieve(n) — n 이하 소수 개수
-- Integer Arithmetic Loop: arith_loop(iterations) — (i^2 + i) mod 1e9+7 누적
-- Matrix Multiply: matmul(size) — 두 size×size 행렬 곱 결과 체크섬
+- Side-by-side JS, Rust (WASM), and C++ (WASM) implementations
+- Live controls for case, parameter, warmup, and rounds
+- Best-time selection across rounds with stable micro-benchmarking
+- Responsive progress UI with spinner, per-phase text, and gradient bar
+- Modern dark UI with subtle glassmorphism and gradients
 
-모든 구현은 동일한 로직/반환형(정수)으로 맞췄으며, 오버플로 처리를 위해 mod 1e9+7을 사용했습니다.
+## Benchmarks
 
-Rust WASM 빌드
-- cargo install wasm-pack  (최초 1회)
-- npm run wasm:rust
-- 산출물: public/wasm/rust/pkg/wasm_benches.js 및 wasm_benches_bg.wasm
-- 브라우저 로딩: src/wasm/rust.ts에서 동적 로딩하여 사용
+- Fibonacci (iterative): `fib(n)` — u32 wrapping semantics
+- Prime Sieve: `prime_sieve(n)` — count primes ≤ n
+- Integer Arithmetic Loop: `arith_loop(iterations)` — accumulate (i² + i) mod 1e9+7
+- Matrix Multiply: `matmul(size)` — checksum of A×B (mod 1e9+7)
 
-C++ WASM 빌드 (Emscripten)
-- EMSDK 설치 가이드: emscripten 공식 문서 참고
-- npm run wasm:cpp
-- 설정: ES 모듈(-s MODULARIZE=1 -s EXPORT_ES6=1), 웹 환경(-s ENVIRONMENT=web)
-- 내보내기: fib, prime_sieve, arith_loop, matmul
-- src/wasm/cpp.ts에서 emscripten cwrap으로 JS 함수로 감싸서 사용
+## How It Works
 
-구조
-- src/bench/ — JS 구현과 러너
-- src/wasm/ — Rust/C++ 로더
-- wasm/rust/ — Rust 소스 (wasm-bindgen)
-- wasm/cpp/ — C++ 소스 (Emscripten)
-- public/wasm/ — 빌드 산출물 배치 위치
+- WASM wrappers are served from `public/` and loaded at runtime to respect Vite’s rule that JS in `public/` cannot be imported from source code.
+- Rust loader dynamically imports the wrapper JS by full URL and passes the resolved `.wasm` URL to `init()`.
+- C++ loader imports the Emscripten ES module by URL and uses `cwrap` to expose functions.
 
-주의 사항
-- 브라우저 성능/전원 상태/탭 포커스 등에 따라 수치가 변동될 수 있습니다. 여러 라운드를 실행하여 최솟값(best) 기준으로 표시합니다.
-- 메인 스레드에서 실행하므로 큰 파라미터는 UI가 순간 멈출 수 있습니다. 필요시 Web Worker로 확장 가능합니다.
+## Getting Started
 
-다음 단계 아이디어
-- Web Worker로 비동기 실행 및 UI 프리즈 최소화
-- 추가 연산(FFT, 문자열 처리, 해시 등) 케이스 확장
-- 결과 내보내기(CSV) 및 그래프 시각화
+- Node.js 18+
+- Rust toolchain + `wasm-pack`
+- Emscripten SDK (for C++)
+
+## Install and Run
+
+```bash
+npm install
+
+# Build WASM (optional if you only want JS)
+npm run wasm:rust
+npm run wasm:cpp
+# or both
+npm run wasm:all
+
+# Start dev server
+npm run dev
+```
+
+## WASM Build Outputs
+
+- Rust (wasm-pack target web): `public/wasm/rust/pkg/wasm_benches.js`, `public/wasm/rust/pkg/wasm_benches_bg.wasm`
+- C++ (Emscripten, ES module): `public/wasm/cpp/benchmark.js`, `public/wasm/cpp/benchmark.wasm`
+
+## Project Structure
+
+- `src/bench/` — JS implementations and the benchmark runner
+- `src/components/` — React UI
+- `src/wasm/` — Rust/C++ runtime loaders
+- `wasm/rust/` — Rust sources (wasm-bindgen)
+- `wasm/cpp/` — C++ sources (Emscripten)
+- `public/wasm/` — Place built WASM artifacts here
+
+## Implementation Notes
+
+- Vite does not transform files in `public/`. To avoid the import-analysis error, loaders build a full URL at runtime and call `import(/* @vite-ignore */ url)` so the browser fetches the module directly.
+- For very fast functions, each round repeats until a minimum wall time (~10ms) is reached, then divides by repetitions to get an average per-call time. Tiny results are shown in µs.
+
+## Troubleshooting
+
+- “Cannot import non-asset file … inside /public”: This is expected. Use the provided loaders; do not import `public/` assets directly from source.
+- If Rust/C++ show as “n/a”, ensure you’ve built and copied the WASM outputs into `public/wasm/...` using the scripts above.
 
