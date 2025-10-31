@@ -72,3 +72,6 @@ npm run dev
 - “Cannot import non-asset file … inside /public”: This is expected. Use the provided loaders; do not import `public/` assets directly from source.
 - If Rust/C++ show as “n/a”, ensure you’ve built and copied the WASM outputs into `public/wasm/...` using the scripts above.
 
+## License
+
+Licensed under the Apache License, Version 2.0. See `LICENSE` for details.
